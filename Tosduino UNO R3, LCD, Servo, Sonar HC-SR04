@@ -1,0 +1,40 @@
+#include
+#include
+
+LiquidCrystal lcd(12, 11, 5, 4, 3, 2); // к каким портам подключен дисплейUltrasonic ultrasonic(8,13); // порты подключения сонара
+
+int servoPin = 7; // порт подключения серво моторчикаint myAngle; // ременная для мотора
+int pulseWidth;
+
+void setup() 
+{
+  lcd.begin(16, 2); // определение дисплея как 16 символьный 2-х строчный
+  lcd.print("Testing ..."); // выводим первое слово
+  delay(1000); // ждем
+  pinMode (servoPin, OUTPUT); // задаем порт мотора как выход
+}
+
+void servoPulse(int servoPin, int myAngle) // функция для сервы
+{ 
+  pulseWidth = (myAngle * 10) + 400;
+  digitalWrite(servoPin, HIGH);  
+  delayMicroseconds(pulseWidth);  
+  digitalWrite(servoPin, LOW);
+}
+
+void loop()
+{
+  int rast = ultrasonic.Ranging(CM); // переменная для расстояния    
+  
+  rast = map (rast, 5,60, 15, 215 ); // преобразование переменной расстояния в       понятное значение для мотора.  
+
+  servoPulse(servoPin, rast); // обращаемся к функции сервы      
+  
+  lcd.clear(); // очищаем дисплей  
+  lcd.setCursor(0, 0); // ставим курсор на первый символ первой строки (первая     это 0)  
+  lcd.print(ultrasonic.Ranging(CM)); // выводим данные с сонара на дисплей          lcd.print("cm"); // и дописываем в конце единицу измерения  
+  lcd.begin(16, 2); // объявляем исплей, 16 символьный , 2 строчный
+  lcd.print("Testing ..."); // выводим стартовое сообщение
+  
+  delay(10); // ждем 10 милисекунд
+}
