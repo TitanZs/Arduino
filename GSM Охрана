@@ -1,0 +1,102 @@
+#include <SoftwareSerial.h>
+#include "Ultrasonic.h"
+ 
+SoftwareSerial gprsSerial(4, 6);
+Ultrasonic ultrasonic(12, 13);
+
+const int gsmPowerPin = 9; // пин включения GSM модема
+
+int timer;
+String stat_sys;
+String sms_text;
+
+void setup()
+{
+    
+  pinMode(gsmPowerPin, OUTPUT);  // выход для пина GSM модема
+  //Включаю GSM Модуль
+  digitalWrite(gsmPowerPin, HIGH);
+  delay(1000);
+  digitalWrite(gsmPowerPin, LOW);
+  delay(5000);
+  
+    Serial.begin(9600);
+    gprsSerial.begin(19200);
+    //Serial.println("Start system...");
+    gprsSerial.print("AT+CMGF=1\r");
+    delay(300);
+    gprsSerial.print("AT+IFC=1, 1\r");
+    delay(300);
+    gprsSerial.print("AT+CPBS=\"SM\"\r");
+    delay(300);
+    gprsSerial.print("AT+CNMI=1,2,2,1,0\r");
+    delay(2000);
+    //Serial.println("Sysetem on");
+    stat_sys = "On";
+    sms_text = "Systema vkluchena \n Ohrana: Off";
+    sendTextMessage(sms_text);
+    stat_sys = "Off";
+    
+}
+String currStr = "";
+boolean isStringMessage = false;
+void loop()
+{
+    float dist_cm = ultrasonic.Ranging(CM); 
+    if (dist_cm < 10){    
+      sms_text = "ALARM!!!! "  ;
+      //Serial.print(sms_text);
+      //Serial.println(dist_cm);
+      sms_text +=  dist_cm;
+      sendTextMessage(sms_text );
+    }
+    if (!gprsSerial.available())
+        return;
+    char currSymb = gprsSerial.read();    
+    if ('\r' == currSymb) {
+        if (isStringMessage) {
+            if (!currStr.compareTo("Status")) { 
+                stat_sys = "On";
+                sms_text = "STATUS\n";                
+                sms_text += "Ohrana: Ne aktivna";
+                sendTextMessage(sms_text);
+                //Serial.println(sms_text);
+                stat_sys = "Off";
+            } else if (!currStr.compareTo("Off")) {
+                stat_sys = "Off";
+                sms_text = "Ohrana: Off";
+                sendTextMessage(sms_text);
+                //Serial.println(sms_text);
+            } else if (!currStr.compareTo("On")) {
+                stat_sys = "On";
+                sms_text = "Ohrana: On";
+                sendTextMessage(sms_text);
+                //Serial.println(sms_text);
+            isStringMessage = false;
+        } else {
+            if (currStr.startsWith("+CMT")) {
+                isStringMessage = true;
+            }
+        }
+        currStr = "";
+    } else if ('\n' != currSymb) {
+        currStr += String(currSymb);
+    }
+    delay(100);
+  }
+}
+  void sendTextMessage(String sms) {
+    // отправка СМС
+    //Serial.print("Proverka SMS: ");
+    //Serial.println(stat_sys);
+   if (stat_sys == "On") 
+   {
+      gprsSerial.print("AT+CMGF=1\r");
+      delay(100); 
+      gprsSerial.println("AT + CMGS = \"+380*********\"");
+      delay(100);
+      gprsSerial.println(sms);
+      delay(100);
+      gprsSerial.println((char)26);
+    }
+ }
